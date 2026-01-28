@@ -21,7 +21,7 @@ from __future__ import annotations
 import logging
 import os
 import shutil
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta,timezone
 from pathlib import Path
 
 import pandas as pd
@@ -160,9 +160,9 @@ def api_template_pipeline():
 
         # TODO: Add your data transformation logic here.
         # For example, you could add a unique ID, convert units, or derive new columns.
-        # df['temp_range_c'] = df['max_temp'] - df['min_temp']
-        # df['load_ts'] = datetime.utcnow()
-        
+        df['temp_range_c'] = df['max_temp'] - df['min_temp']
+        df['load_ts'] = datetime.now(timezone.utc)
+
         
         log.info(f"Transformation complete. DataFrame has {len(df)} rows.")
         return df, date_str
