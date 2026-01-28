@@ -163,6 +163,7 @@ def api_template_pipeline():
         # df['temp_range_c'] = df['max_temp'] - df['min_temp']
         # df['load_ts'] = datetime.utcnow()
         
+        
         log.info(f"Transformation complete. DataFrame has {len(df)} rows.")
         return df, date_str
 
