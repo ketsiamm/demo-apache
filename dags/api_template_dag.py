@@ -89,7 +89,8 @@ def api_template_pipeline():
         """
         Connects to the API, downloads data for the execution date, and saves it to a staging file.
         """
-        date_str = data_interval_start.strftime('%Y-%m-%d')
+
+        date_str = data_interval_start.strftime('%Y-%m-%d') 
         local_dir = STAGING_AREA / date_str
 
         # --- Idempotency Check ---
@@ -183,7 +184,7 @@ def api_template_pipeline():
             # A MERGE statement is recommended for idempotency.
             # Example:
              from snowflake.connector.pandas_tools import write_pandas
-             success, _, _, _ = write_pandas(conn, df, SNOWFLAKE_TABLE, auto_create_table=True, overwrite=True)
+             success, _, _, _ = write_pandas(conn, df, SNOWFLAKE_TABLE, auto_create_table=True)
              if not success:
                  raise Exception("Failed to write to Snowflake.")
             
