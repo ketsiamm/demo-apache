@@ -97,7 +97,7 @@ def sftp_template_pipeline():
                 local_file = local_dir / filename
                 log.info(f"Downloading {remote_file} to {local_file}")
                 # TODO: Uncomment the line below to perform the actual download
-                # sftp.get(str(remote_file), str(local_file))
+                sftp.get(str(remote_file), str(local_file))
                 downloaded_files.append(str(local_file))
 
             sftp.close()
