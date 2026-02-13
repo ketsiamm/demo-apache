@@ -21,7 +21,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
-from airflow.decorators import dag, task
+from airflow.sdk import dag, task
 
 # Import necessary utilities
 from utils import create_sftp_connection, get_snowflake_connection, list_files
@@ -34,8 +34,7 @@ log = logging.getLogger(__name__)
 # IMPORTANT: This path is relative to the Airflow project root.
 STAGING_AREA = Path("staging/sftp")
 PROCESSED_LOG_FILE = STAGING_AREA / "processed_dates.txt"
-SNOWFLAKE_TABLE = "YOUR_TABLE_NAME_HERE"  # TODO: Replace with your target table name
-
+SNOWFLAKE_TABLE = "SFTP_KETSIAMMEN_K"  # TODO: Replace with your target table name
 
 
 @dag(
@@ -80,7 +79,7 @@ def sftp_template_pipeline():
 
         # --- Proceed with Extraction ---
         local_dir.mkdir(exist_ok=True)
-        remote_path = f"/course/ITM327/sftp_files/{date_str}"
+        remote_path = f"/course/ITM327/news/{date_str}"
         downloaded_files = []
 
         log.info(f"Connecting to SFTP to download files from: {remote_path}")
@@ -125,12 +124,12 @@ def sftp_template_pipeline():
         for file_path in local_files:
             log.info(f"Reading {file_path}...")
             # TODO: Read each file into a DataFrame and append to `all_dfs`
-            # Example:
-            # try:
-            #     df = pd.read_csv(file_path)
-            #     all_dfs.append(df)
-            # except pd.errors.EmptyDataError:
-            #     log.warning(f"File is empty: {file_path}")
+            # Example
+            try:
+                df = pd.read_csv(file_path)
+                all_dfs.append(df)
+            except pd.errors.EmptyDataError:
+                log.warning(f"File is empty: {file_path}")
             pass
 
         if not all_dfs:
@@ -142,6 +141,15 @@ def sftp_template_pipeline():
         # TODO: Add your transformation logic here.
         # For example, rename columns, filter data, create new features.
         log.info("Applying transformations...")
+
+        # DEBUG
+        log.info(f"Columns → {combined_df.columns.tolist()}")
+        log.info(f"Shape → {combined_df.shape}")
+        log.info(f"Preview:\n{combined_df.head()}")
+        log.info("Data types of each column:")
+        log.info(combined_df.dtypes.to_dict())
+        combined_df.columns = [c.upper() for c in combined_df.columns]
+        log.info(f"Columns after uppercase conversion → {combined_df.columns.tolist()}")
         
         log.info(f"Transformation complete. Resulting DataFrame has {len(combined_df)} rows.")
         return combined_df, date_str
@@ -159,13 +167,13 @@ def sftp_template_pipeline():
         log.info(f"Loading {len(df)} rows into Snowflake table: {SNOWFLAKE_TABLE}")
         
         # TODO: Implement the Snowflake loading logic.
-        # conn = get_snowflake_connection()
+        conn = get_snowflake_connection()
         try:
-            # from snowflake.connector.pandas_tools import write_pandas
-            # success, n_chunks, n_rows, _ = write_pandas(conn, df, SNOWFLAKE_TABLE)
-            # if not success:
-            #     raise Exception("Snowflake write_pandas failed.")
-            # log.info(f"Successfully loaded {n_rows} rows to {SNOWFLAKE_TABLE}.")
+            from snowflake.connector.pandas_tools import write_pandas
+            success, n_chunks, n_rows, _ = write_pandas(conn, df, SNOWFLAKE_TABLE)
+            if not success:
+                raise Exception("Snowflake write_pandas failed.")
+            log.info(f"Successfully loaded {n_rows} rows to {SNOWFLAKE_TABLE}.")
 
             # --- Log Processed Date on Success ---
             with open(PROCESSED_LOG_FILE, "a") as f:
@@ -176,7 +184,7 @@ def sftp_template_pipeline():
             log.error(f"Snowflake load failed: {e}")
             raise
         finally:
-            # if conn: conn.close()
+            if conn: conn.close()
             log.info("Snowflake connection placeholder closed.")
             
         return date_str
@@ -199,9 +207,9 @@ def sftp_template_pipeline():
 
 
     # --- Task Chaining ---
-    extracted_data, run_date = extract_from_sftp()
-    transformed_data, run_date_transform = transform_data([extracted_data, run_date])
-    loaded_date = load_to_snowflake([transformed_data, run_date_transform])
+    extract_result = extract_from_sftp()
+    transform_result = transform_data(extract_result)
+    loaded_date = load_to_snowflake(transform_result)
     cleanup_staging_files(loaded_date)
 
 # Instantiate the DAG
